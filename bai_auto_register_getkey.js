@@ -32,11 +32,21 @@ async function main() {
   console.log(`[*] Membuka browser. Kalau muncul modal Turnstile, centang 'Verify you are human'.\n`);
 
   const browser = await chromium.launch({ headless: false, args: ["--disable-blink-features=AutomationControlled", "--window-size=1440,1000"] });
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 }, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" });
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await ctx.newPage();
 
   // ==== Injeksi mock wallet MetaMask ====
   await page.addInitScript(async ({ addr, pk }) => {
+    // Anti-detection: sembunyikan tanda browser otomatis
+    Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+    Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3, 4, 5] });
+    Object.defineProperty(navigator, "languages", { get: () => ["en-US", "en"] });
+    const origQuery = window.navigator.permissions && window.navigator.permissions.query;
+    if (origQuery) {
+      window.navigator.permissions.query = (parameters) => (parameters && parameters.name === "notifications")
+        ? Promise.resolve({ state: Notification.permission }) : origQuery(parameters);
+    }
+    window.chrome = window.chrome || { runtime: {} };
     window.__pk = pk;
     window.__loadEthers = () => new Promise((res, rej) => {
       if (window.ethers) return res(window.ethers);
@@ -104,11 +114,17 @@ async function main() {
   // Tunggu Continue enable (user solve turnstile) atau langsung login kalau sudah terdaftar
   const continueBtn = page.getByRole("button", { name: /continue/i }).first();
   try { await continueBtn.waitFor({ state: "visible", timeout: 20000 }); } catch(e){}
-  for (let i = 0; i < 45; i++) {
-    try { if (await continueBtn.isEnabled()) break; } catch(e){}
+  let enabled = false;
+  for (let i = 0; i < 60; i++) {
+    try { enabled = await continueBtn.isEnabled(); if (enabled) break; } catch(e){}
+    // Deteksi error "verification failed" di halaman
+    const bodyTxt = await page.evaluate(() => document.body ? document.body.innerText.slice(0, 400) : "").catch(()=>"");
+    if (/verification failed|verification error|failed/i.test(bodyTxt)) {
+      console.log("[!] Halaman menampilkan error verifikasi. Teks:", JSON.stringify(bodyTxt.slice(0, 200)));
+      break;
+    }
     await page.waitForTimeout(1000);
   }
-  let enabled = false;
   try { enabled = await continueBtn.isEnabled(); } catch(e){}
   if (enabled) { await continueBtn.click(); console.log("[*] Continue diklik. Menunggu login..."); }
   await page.waitForTimeout(6000);
