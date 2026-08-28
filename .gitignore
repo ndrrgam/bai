@@ -1,0 +1,16 @@
+# Node
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# Hasil/sensitif (jangan commit!)
+*.json
+sessions/
+screenshots/
+*.png
+*.txt
+.env
+
+# Sisa
+*.log
+.DS_Store
