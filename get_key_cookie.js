@@ -128,10 +128,10 @@ function req(method, url, body, headers = {}) {
   }
 
   fs.writeFileSync("get_key_cookie_results.json", JSON.stringify(results, null, 2));
-  console.log("\n=== HASIL ===");
+  console.log("\n=== HASIL (format: keyname|fullkey) ===");
   results.forEach(r => {
-    if (r.full) console.log(`🎉 ${r.name}: ${r.key} (PENUH)`);
-    else if (r.key) console.log(`⚠️ ${r.name}: ${r.key} (MASKED)`);
+    if (r.full) console.log(`${r.name}|${r.key}`);
+    else if (r.key) console.log(`${r.name}|${r.key} (MASKED)`);
     else console.log(`❌ ${r.name}: ${r.error || r.raw}`);
   });
 
