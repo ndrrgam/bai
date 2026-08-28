@@ -124,22 +124,10 @@ async function registerOne(clientKey) {
   } catch (e) { result = resp.body.slice(0, 60); }
 
   // SETELAH callback, ambil session cookie dari jar
-  let sessionCookie = jar.cookie || "";
-
-  // Callback mungkin belum men-set __Secure-authjs.session-token.
-  // Coba panggil /api/auth/session — server biasanya men-set session token cookie di sini.
-  if (!/__Secure-authjs\.session-token|authjs\.session-token/i.test(sessionCookie)) {
-    try {
-      const sess = await req("GET", `${ORIGIN}/api/auth/session`, undefined, { "X-Auth-Return-Redirect": "1" }, jar);
-      sessionCookie = jar.cookie || sessionCookie;
-      if (sess.status === 200) console.log("[*] /api/auth/session ->", sess.body.slice(0, 80));
-    } catch(e){}
-  }
-
+  const sessionCookie = jar.cookie || "";
   const hasSession = /__Secure-authjs\.session-token|authjs\.session-token/i.test(sessionCookie);
   console.log(`[*] Callback: status=${resp.status} | result=${result} | apiToken=${apiAccessToken ? "YES" : "NO"} | sessionCookie=${hasSession ? "YA" : "TIDAK"}`);
-  // Debug: tampilkan SEMUA cookie yang tertangkap
-  console.log("[*] Semua cookie:", sessionCookie || "(kosong)");
+  if (sessionCookie) console.log(`[*] Cookie: ${sessionCookie.slice(0, 60)}...`);
 
   await new Promise(r => setTimeout(r, 1500));
   const registered = await checkRegistered(addr, jar);
