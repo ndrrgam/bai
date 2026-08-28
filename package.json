@@ -1,0 +1,17 @@
+{
+  "name": "bai-autoreg",
+  "version": "1.0.0",
+  "description": "B.AI wallet auto-register + auto-get API key",
+  "main": "bai_register_save_cookie.js",
+  "scripts": {
+    "register": "node bai_register_save_cookie.js",
+    "register-proxy": "node bai_register_proxy.js",
+    "getkey": "node get_key_cookie.js",
+    "getkey-all": "node get_key_all.js"
+  },
+  "dependencies": {
+    "ethers": "^6.13.0",
+    "https-proxy-agent": "^7.0.0",
+    "http-proxy-agent": "^7.0.0"
+  }
+}

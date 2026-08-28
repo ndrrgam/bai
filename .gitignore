@@ -1,7 +1,6 @@
 # Node
 node_modules/
 npm-debug.log*
-package-lock.json
 
 # Hasil/sensitif (jangan commit!)
 *.json
@@ -10,6 +9,10 @@ screenshots/
 *.png
 *.txt
 .env
+
+# Tapi simpan file konfigurasi ini
+!package.json
+!proxies.txt
 
 # Sisa
 *.log
