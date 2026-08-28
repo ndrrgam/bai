@@ -122,14 +122,39 @@ async function main() {
   await page.waitForTimeout(6000);
   console.log("[*] Status login. URL:", page.url());
 
-  // Kalau belum login (misal ada modal lain), tunggu sebentar
-  if (/log in/i.test(await page.url().toLowerCase()) === false) {
-    console.log("[*] Sepertinya sudah login. Lanjut ke /key...");
-  }
-
   // ==== BUKA /key & CREATE API KEY ====
+  // Tunggu session cookie terbentuk & redirect selesai setelah login
+  await page.waitForTimeout(5000);
+  console.log("[*] Buka /key...");
   await page.goto("https://chat.b.ai/key", { waitUntil: "networkidle", timeout: 45000 }).catch(()=>{});
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(4000);
+
+  // Cek apakah /key benar-benar kebuka atau redirect ke login
+  const keyUrl = page.url();
+  const keyBody = await page.evaluate(() => document.body ? document.body.innerText.slice(0, 300) : "").catch(()=>"");
+  console.log("[*] URL /key:", keyUrl);
+  if (/log in|login|sign in|signin/i.test(keyBody) && !/create api key|api key|access mode/i.test(keyBody)) {
+    console.log("[!] Sepertinya belum login (kena redirect ke login). Coba login ulang...");
+    // Navigasi balik ke chat, pastikan login, lalu ke /key lagi
+    await page.goto("https://chat.b.ai/chat", { waitUntil: "domcontentloaded", timeout: 45000 }).catch(()=>{});
+    await page.waitForTimeout(4000);
+    if (await page.getByRole("button", { name: /log in/i }).count()) {
+      console.log("[*] Masih perlu login. Klik log in...");
+      await page.getByRole("button", { name: /log in/i }).first().click().catch(()=>{});
+      await page.waitForTimeout(2000);
+      await page.getByRole("button", { name: /other login methods/i }).first().click().catch(()=>{});
+      await page.waitForTimeout(1500);
+      try { const b = page.getByRole("tab", { name: /evm/i }).first(); if (await b.count()) await b.click(); } catch(e){}
+      await page.waitForTimeout(1200);
+      try { const b = page.getByRole("button", { name: /metamask/i }).first(); if (await b.count()) await b.click(); } catch(e){}
+      await page.waitForTimeout(6000);
+      // wallet sudah terdaftar -> langsung connect tanpa turnstile, tunggu login
+      await page.waitForTimeout(5000);
+    }
+    console.log("[*] Buka /key lagi...");
+    await page.goto("https://chat.b.ai/key", { waitUntil: "networkidle", timeout: 45000 }).catch(()=>{});
+    await page.waitForTimeout(4000);
+  }
 
   let created = false;
   for (let s = 0; s < 10; s++) {
