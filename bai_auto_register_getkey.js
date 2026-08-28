@@ -37,16 +37,8 @@ async function main() {
 
   // ==== Injeksi mock wallet MetaMask ====
   await page.addInitScript(async ({ addr, pk }) => {
-    // Anti-detection: sembunyikan tanda browser otomatis
+    // Anti-detection minimal & aman (jangan spoof berlebihan — bisa bikin Turnstile error)
     Object.defineProperty(navigator, "webdriver", { get: () => undefined });
-    Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3, 4, 5] });
-    Object.defineProperty(navigator, "languages", { get: () => ["en-US", "en"] });
-    const origQuery = window.navigator.permissions && window.navigator.permissions.query;
-    if (origQuery) {
-      window.navigator.permissions.query = (parameters) => (parameters && parameters.name === "notifications")
-        ? Promise.resolve({ state: Notification.permission }) : origQuery(parameters);
-    }
-    window.chrome = window.chrome || { runtime: {} };
     window.__pk = pk;
     window.__loadEthers = () => new Promise((res, rej) => {
       if (window.ethers) return res(window.ethers);
