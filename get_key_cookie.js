@@ -52,10 +52,30 @@ function req(method, url, body, headers = {}) {
 
 (async () => {
   const count = parseInt(process.argv[2] || "1", 10);
-  // Bisa: node get_key_cookie.js 3        -> paste cookie manual
-  //      node get_key_cookie.js 3 cookies/0xABC.txt -> baca cookie dari file
+  // Cara pakai:
+  //   node get_key_cookie.js 3                                  -> paste cookie manual
+  //   node get_key_cookie.js 3 cookies/0xABC.txt                -> baca cookie dari file txt
+  //   node get_key_cookie.js 3 account:0                        -> baca cookie akun index 0 dari bai_accounts.json
   let rawCookie = process.argv[3];
-  if (rawCookie && fs.existsSync(rawCookie)) {
+  const ACCOUNT_DB = "bai_accounts.json";
+
+  if (rawCookie && /^account:\d+$/i.test(rawCookie)) {
+    const idx = parseInt(rawCookie.split(":")[1], 10);
+    if (fs.existsSync(ACCOUNT_DB)) {
+      const all = JSON.parse(fs.readFileSync(ACCOUNT_DB, "utf-8"));
+      const acc = all[idx];
+      if (acc && acc.sessionCookie) {
+        rawCookie = acc.sessionCookie;
+        console.log(`[*] Cookie akun [${idx}] ${acc.address}: dibaca dari ${ACCOUNT_DB}`);
+      } else {
+        console.log(`[!] Akun [${idx}] tidak ada / tidak punya cookie. Cek bai_accounts.json.`);
+        process.exit(1);
+      }
+    } else {
+      console.log(`[!] ${ACCOUNT_DB} tidak ditemukan.`);
+      process.exit(1);
+    }
+  } else if (rawCookie && fs.existsSync(rawCookie)) {
     rawCookie = fs.readFileSync(rawCookie, "utf-8").trim();
     console.log("[*] Cookie dibaca dari file:", process.argv[3]);
   }
@@ -114,5 +134,23 @@ function req(method, url, body, headers = {}) {
     else if (r.key) console.log(`⚠️ ${r.name}: ${r.key} (MASKED)`);
     else console.log(`❌ ${r.name}: ${r.error || r.raw}`);
   });
+
+  // Kalau dipakai via account:N, update apiKey di bai_accounts.json (semua key penuh)
+  const accountArg = process.argv[3];
+  if (accountArg && /^account:\d+$/i.test(accountArg)) {
+    const idx = parseInt(accountArg.split(":")[1], 10);
+    if (fs.existsSync(ACCOUNT_DB)) {
+      try {
+        const all = JSON.parse(fs.readFileSync(ACCOUNT_DB, "utf-8"));
+        const fullKeys = results.filter(r => r.full).map(r => r.key);
+        if (all[idx]) {
+          all[idx].apiKeys = [...(all[idx].apiKeys || []), ...fullKeys];
+          fs.writeFileSync(ACCOUNT_DB, JSON.stringify(all, null, 2));
+          console.log(`[*] apiKey akun [${idx}] di-update di ${ACCOUNT_DB} (${fullKeys.length} key)`);
+        }
+      } catch(e){ console.log("[!] Gagal update bai_accounts.json:", e.message); }
+    }
+  }
+
   console.log("\nDisimpan ke get_key_cookie_results.json");
 })().catch(e => { console.error("ERROR:", e.message); process.exit(1); });

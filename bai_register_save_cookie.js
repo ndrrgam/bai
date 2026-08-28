@@ -133,15 +133,14 @@ async function registerOne(clientKey) {
   const registered = await checkRegistered(addr, jar);
   console.log(`[*] Terdaftar: ${registered}`);
 
-  // Simpan cookie ke file
-  const cookieFile = `cookies/${addr}.txt`;
+  // Simpan cookie ke dalam object akun (bukan file terpisah)
+  // Semua akun akan di-append ke SATU file bai_accounts.json
+  const cookieFile = null;
   if (sessionCookie) {
-    fs.mkdirSync("cookies", { recursive: true });
-    fs.writeFileSync(cookieFile, sessionCookie);
-    console.log(`[*] Cookie disimpan: ${cookieFile}`);
+    console.log(`[*] Cookie: ${sessionCookie.slice(0, 40)}...`);
   }
 
-  return { address: addr, privateKey: w.privateKey, callbackStatus: resp.status, result, userId, apiAccessToken, registered, sessionCookie: sessionCookie ? sessionCookie.slice(0, 80) : "", cookieFile: sessionCookie ? cookieFile : null };
+  return { address: addr, privateKey: w.privateKey, callbackStatus: resp.status, result, userId, apiAccessToken, registered, sessionCookie: sessionCookie || "", createdAt: new Date().toISOString() };
 }
 
 function askKey() {
@@ -162,11 +161,29 @@ function askKey() {
     catch (e) { console.log("[!] Error:", e.message); results.push({ error: e.message }); }
     if (i < count - 1) await new Promise(r => setTimeout(r, 3000));
   }
-  fs.writeFileSync("bai_register_cookies.json", JSON.stringify(results, null, 2));
-  console.log("\n=== RINGKASAN ===");
+
+  // APPEND semua akun ke SATU file bai_accounts.json (akumulasi, tidak overwrite)
+  const DB_FILE = "bai_accounts.json";
+  let all = [];
+  if (fs.existsSync(DB_FILE)) {
+    try { all = JSON.parse(fs.readFileSync(DB_FILE, "utf-8")); } catch (e) { all = []; }
+  }
+  const added = results.filter(r => !r.error);
+  all.push(...added);
+  fs.writeFileSync(DB_FILE, JSON.stringify(all, null, 2));
+  console.log(`\n[*] Total akun tersimpan di ${DB_FILE}: ${all.length}`);
+
+  // Tampilkan daftar dengan index (untuk dipakai get_key_cookie)
+  console.log("\n=== DAFTAR AKUN (index utk get_key_cookie) ===");
+  all.forEach((a, idx) => {
+    const hasCookie = a.sessionCookie ? "✅cookie" : "⚠️no-cookie";
+    console.log(`[${idx}] ${a.address || "?"} | result=${a.result || "?"} | registered=${a.registered} | ${hasCookie}`);
+  });
+
+  console.log("\n=== HASIL GENERATE INI ===");
   results.forEach(r => {
     if (r.error) console.log(`❌ ${r.address || "?"}: ${r.error}`);
-    else console.log(`${r.sessionCookie ? "✅" : "⚠️"} ${r.address}: result=${r.result} registered=${r.registered} cookie=${r.cookieFile || "TIDAK"}`);
+    else console.log(`${r.sessionCookie ? "✅" : "⚠️"} ${r.address}: result=${r.result} registered=${r.registered}`);
   });
-  console.log("\nDisimpan: bai_register_cookies.json + cookies/<addr>.txt");
+  console.log(`\nDisimpan: ${DB_FILE} (semua akun + cookie dalam satu file)`);
 })().catch(e => { console.error("ERROR:", e.message); process.exit(1); });
