@@ -52,7 +52,16 @@ function req(method, url, body, headers = {}) {
 
 (async () => {
   const count = parseInt(process.argv[2] || "1", 10);
-  const rawCookie = await ask("Paste Cookie session chat.b.ai (dari DevTools -> Application -> Cookies): ");
+  // Bisa: node get_key_cookie.js 3        -> paste cookie manual
+  //      node get_key_cookie.js 3 cookies/0xABC.txt -> baca cookie dari file
+  let rawCookie = process.argv[3];
+  if (rawCookie && fs.existsSync(rawCookie)) {
+    rawCookie = fs.readFileSync(rawCookie, "utf-8").trim();
+    console.log("[*] Cookie dibaca dari file:", process.argv[3]);
+  }
+  if (!rawCookie) {
+    rawCookie = await ask("Paste Cookie session chat.b.ai (dari DevTools -> Application -> Cookies): ");
+  }
   if (!rawCookie.trim()) { console.log("Tidak ada cookie."); process.exit(1); }
 
   // Cookie bisa dipaste sebagai "key=value; key2=value2" atau "key=value\nkey2=value"
